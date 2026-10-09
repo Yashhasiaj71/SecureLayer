@@ -1,0 +1,61 @@
+name: secure_layer
+description: SecureLayer — Secure File Access MVP
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management — Riverpod: type-safe, no BuildContext required, excellent for auth state
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # HTTP client with interceptor support for token refresh
+  dio: ^5.4.3+1
+
+  # Routing
+  go_router: ^13.2.0
+
+  # File picking
+  file_picker: ^8.0.3
+
+  # PDF viewing (safest web-compatible option)
+  pdfx: ^2.6.0
+
+  # Secure storage (for refresh token cookie handling — mostly handled by browser)
+  flutter_secure_storage: ^9.2.2
+
+  # Icons
+  cupertino_icons: ^1.0.6
+
+  # Formatting
+  intl: ^0.19.0
+
+  # UUID
+  uuid: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.3.9
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
