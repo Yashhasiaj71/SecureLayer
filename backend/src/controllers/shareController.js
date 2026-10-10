@@ -35,7 +35,8 @@ const getGlobalFiles = async (req, res, next) => {
           size: f.size,
           createdAt: f.createdAt,
           ownerEmail: owner?.email || 'Unknown',
-          accessStatus: request ? request.status : null, // PENDING, APPROVED, DENIED, or null
+          accessStatus: request ? request.status : null,
+          confidentialityLevel: f.confidentialityLevel || 'NORMAL',
         };
       })
     );

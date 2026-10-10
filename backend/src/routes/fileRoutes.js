@@ -12,5 +12,6 @@ router.post('/upload', requirePermission('file.upload'), fileController.uploadFi
 router.get('/', requirePermission('file.read'), fileController.listFiles);
 router.get('/:id', requirePermission('file.read'), fileController.getFile);
 router.delete('/:id', requirePermission('file.delete.own'), fileController.deleteFile);
+router.patch('/:id/confidentiality', requirePermission('file.upload'), fileController.patchConfidentiality);
 
 module.exports = router;

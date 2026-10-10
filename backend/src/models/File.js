@@ -63,6 +63,12 @@ const fileSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    confidentialityLevel: {
+      type: String,
+      enum: ['NORMAL', 'CONFIDENTIAL', 'HIGHLY_CONFIDENTIAL'],
+      default: 'NORMAL',
+      index: true,
+    },
   },
   {
     timestamps: true,

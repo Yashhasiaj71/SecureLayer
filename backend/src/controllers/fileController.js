@@ -129,6 +129,7 @@ const listFiles = async (req, res, next) => {
       size: f.size,
       createdAt: f.createdAt,
       updatedAt: f.updatedAt,
+      confidentialityLevel: f.confidentialityLevel || 'NORMAL',
     }));
 
     res.json({ success: true, data: { files: safeFiles } });
@@ -321,8 +322,65 @@ const deleteFile = async (req, res, next) => {
 const sanitizeFilename = (filename) => {
   return path
     .basename(filename)
-    .replace(/[^a-zA-Z0-9._\-\s]/g, '_')
+    .replace(/[^a-zA-Z0-9.\-\s]/g, '_')
     .slice(0, 255);
 };
 
-module.exports = { uploadFile, listFiles, getFile, deleteFile };
+/**
+ * PATCH /api/files/:id/confidentiality
+ * Owner or admin may update the file's confidentiality classification.
+ */
+const patchConfidentiality = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { level } = req.body;
+    const { ipAddress, userAgent } = auditService.extractRequestContext(req);
+
+    const VALID_LEVELS = ['NORMAL', 'CONFIDENTIAL', 'HIGHLY_CONFIDENTIAL'];
+    if (!VALID_LEVELS.includes(level)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_LEVEL', message: 'Invalid confidentiality level' },
+      });
+    }
+
+    if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'File not found' } });
+    }
+
+    const fileDoc = await File.findOne({ _id: id, isDeleted: false });
+    if (!fileDoc) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'File not found' } });
+    }
+
+    const isOwner = fileDoc.ownerId.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'ADMIN';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Access denied' } });
+    }
+
+    const previousLevel = fileDoc.confidentialityLevel;
+    fileDoc.confidentialityLevel = level;
+    await fileDoc.save();
+
+    await auditService.log({
+      userId: req.user._id,
+      action: 'FILE_CONFIDENTIALITY_CHANGED',
+      fileId: fileDoc._id,
+      ipAddress,
+      userAgent,
+      success: true,
+      metadata: { previousLevel, newLevel: level, changedByAdmin: isAdmin && !isOwner },
+    });
+
+    res.json({
+      success: true,
+      data: { confidentialityLevel: fileDoc.confidentialityLevel },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { uploadFile, listFiles, getFile, deleteFile, patchConfidentiality };

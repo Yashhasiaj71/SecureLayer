@@ -19,6 +19,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const fileRoutes = require('./src/routes/fileRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const shareRoutes = require('./src/routes/shareRoutes');
+const camRoutes = require('./src/routes/camRoutes');
 
 const app = express();
 
@@ -53,14 +54,15 @@ app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests from configured frontend URL, or no origin (server-to-server)
-      if (!origin || origin === config.cors.frontendUrl) {
+      const allowedOrigins = [config.cors.frontendUrl, 'http://localhost:3000', 'http://localhost:5173'];
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: Origin ${origin} not allowed`));
       }
     },
     credentials: true, // Required for HttpOnly cookies
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     exposedHeaders: ['Content-Disposition'],
   })
@@ -84,6 +86,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/share', shareRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/cam', camRoutes);
 
 // Health check (no auth — for load balancers)
 app.get('/health', (req, res) => {
