@@ -3,37 +3,7 @@ import { FileText, Lock, Unlock, Clock, AlertCircle, Loader2, Eye, X, RefreshCw 
 import { useAuth } from './AuthContext';
 import api from './api';
 
-// --- react-pdf integration for secure canvas rendering ---
-import { Document, Page, pdfjs } from 'react-pdf';
-// Set up the PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
-const WatermarkOverlay = ({ email }) => {
-  const [timestamp] = useState(() => new Date().toLocaleString());
-  const watermarkText = `${email} • ${timestamp}`;
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="350" height="250">
-      <text x="50%" y="50%" transform="rotate(-30 175 125)" text-anchor="middle" fill="rgba(255, 255, 255, 0.4)" stroke="rgba(0, 0, 0, 0.3)" stroke-width="1" font-size="15" font-family="sans-serif" font-weight="bold">
-        ${watermarkText}
-      </text>
-      <text x="50%" y="60%" transform="rotate(-30 175 125)" text-anchor="middle" fill="rgba(255, 255, 255, 0.3)" stroke="rgba(0, 0, 0, 0.2)" stroke-width="1" font-size="11" font-family="sans-serif" font-weight="bold">
-        SECURELAYER CONFIDENTIAL
-      </text>
-    </svg>
-  `;
-  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-
-  return (
-    <div style={{
-      position: 'absolute',
-      top: 0, left: 0, right: 0, bottom: 0,
-      pointerEvents: 'none',
-      backgroundImage: `url("${dataUrl}")`,
-      backgroundRepeat: 'repeat',
-      zIndex: 100000,
-    }} />
-  );
-};
+import SecureFileViewer from './SecureFileViewer';
 
 export default function GlobalFiles() {
   const { user } = useAuth();
@@ -43,8 +13,7 @@ export default function GlobalFiles() {
   
   // Secure Viewer State
   const [viewingFileUrl, setViewingFileUrl] = useState(null);
-  const [viewingMime, setViewingMime] = useState(null);
-  const [numPages, setNumPages] = useState(null);
+  const [viewingFile, setViewingFile] = useState(null);
 
   useEffect(() => {
     fetchGlobalFiles();
@@ -97,18 +66,17 @@ export default function GlobalFiles() {
     }
   };
 
-  const handleViewShared = async (fileId, mimeType) => {
+  const handleViewShared = async (file) => {
     try {
       // Securely fetch file with Auth Header as a Blob
-      const res = await api.get(`/files/${fileId}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: mimeType }));
+      const res = await api.get(`/files/${file.id}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: file.mimeType }));
       
-      setViewingMime(mimeType);
+      setViewingFile(file);
       setViewingFileUrl(url);
-      setNumPages(null);
 
       // Optimistically mark as EXPIRED so they can't click it again
-      setFiles(files.map(f => f.id === fileId ? { ...f, accessStatus: 'EXPIRED' } : f));
+      setFiles(files.map(f => f.id === file.id ? { ...f, accessStatus: 'EXPIRED' } : f));
     } catch (err) {
       alert('Failed to view file. Access may have been revoked or already consumed.');
     }
@@ -119,8 +87,7 @@ export default function GlobalFiles() {
       window.URL.revokeObjectURL(viewingFileUrl);
     }
     setViewingFileUrl(null);
-    setViewingMime(null);
-    setNumPages(null);
+    setViewingFile(null);
   };
 
   const formatSize = (bytes) => {
@@ -216,7 +183,7 @@ export default function GlobalFiles() {
                 <div style={{ marginLeft: '16px' }}>
                   {file.accessStatus === 'APPROVED' ? (
                     <button 
-                      onClick={() => handleViewShared(file.id, file.mimeType)}
+                      onClick={() => handleViewShared(file)}
                       className="btn-primary"
                       style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
@@ -263,63 +230,15 @@ export default function GlobalFiles() {
       </div>
 
       {/* SECURE VIEWER OVERLAY */}
-      {viewingFileUrl && (
-        <div 
-          style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.95)',
-            zIndex: 9999, display: 'flex', flexDirection: 'column',
-            backdropFilter: 'blur(10px)'
-          }}
-          // Prevent right-click to save
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 24px', backgroundColor: '#0f172a', borderBottom: '1px solid #1e293b' }}>
-            <div style={{ color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Lock size={18} color="#10b981" />
-              <span style={{ fontWeight: '600' }}>Secure Abstract Viewer — One-Time Access</span>
-            </div>
-            <button 
-              onClick={closeViewer}
-              style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <X size={20} /> Close Window
-            </button>
-          </div>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '24px', position: 'relative' }}>
-            <WatermarkOverlay email={user?.email} />
-            {viewingMime?.startsWith('image/') ? (
-              <img 
-                src={viewingFileUrl} 
-                alt="Secure Decrypted content" 
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', userSelect: 'none', pointerEvents: 'none' }} 
-              />
-            ) : (
-              <div style={{ width: '100%', height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Document 
-                  file={viewingFileUrl} 
-                  onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                  loading={<Loader2 size={32} className="animate-spin" color="#10b981" />}
-                  error={<div style={{ color: '#ef4444' }}>Failed to securely render PDF.</div>}
-                >
-                  {Array.from(new Array(numPages || 0), (el, index) => (
-                    <div key={`page_${index + 1}`} style={{ marginBottom: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                      <Page 
-                        pageNumber={index + 1} 
-                        renderTextLayer={false} 
-                        renderAnnotationLayer={false}
-                        width={Math.min(window.innerWidth - 80, 1000)}
-                      />
-                    </div>
-                  ))}
-                </Document>
-              </div>
-            )}
-          </div>
-          <div style={{ padding: '12px', textAlign: 'center', color: '#ef4444', fontSize: '12px', backgroundColor: '#0f172a' }}>
-            DO NOT CLOSE THIS WINDOW. ONCE CLOSED, YOUR ACCESS WILL BE PERMANENTLY REVOKED.
-          </div>
-        </div>
+      {viewingFileUrl && viewingFile && (
+        <SecureFileViewer
+          fileId={viewingFile.id}
+          filename={viewingFile.originalFilename}
+          mimeType={viewingFile.mimeType}
+          confidentialityLevel={viewingFile.confidentialityLevel || 'NORMAL'}
+          blobUrl={viewingFileUrl}
+          onClose={closeViewer}
+        />
       )}
     </>
   );
