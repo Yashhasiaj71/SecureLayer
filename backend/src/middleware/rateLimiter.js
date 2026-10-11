@@ -10,12 +10,11 @@ const config = require('../config/environment');
 /* 
   --- RATE LIMITERS PAUSED FOR DEVELOPMENT ---
   To re-enable rate limiting, delete these 3 lines below and uncomment the actual limiters!
-*/
-const apiLimiter = (req, res, next) => next();
-const otpLimiter = (req, res, next) => next();
-const authLimiter = (req, res, next) => next();
+// */
+// const apiLimiter = (req, res, next) => next();
+// const otpLimiter = (req, res, next) => next();
+// const authLimiter = (req, res, next) => next();
 
-/* 
 // To Re-enable: Uncomment this block
 const apiLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
@@ -59,6 +58,6 @@ const authLimiter = rateLimit({
     },
   },
 });
-*/
+
 
 module.exports = { apiLimiter, otpLimiter, authLimiter };
