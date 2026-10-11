@@ -74,57 +74,15 @@ SecureLayer closes that gap. Access is **one-time and owner-approved**, the docu
 
 ## 🏗️ Architecture
 
-```mermaid
-flowchart TB
-    subgraph Browser["Client Browser (React + Edge AI)"]
-        UI["Directory & Access UI"]
-        VIEW["SecureFileViewer<br/>in-memory canvas + watermark"]
-        CAM["CamDetection<br/>BlazeFace + COCO-SSD"]
-        RISK["Risk Engine<br/>temporal smoothing + hysteresis"]
-        SHIELD["SecurityOverlay"]
-        UI --> VIEW
-        CAM --> RISK --> SHIELD
-        SHIELD -. covers .-> VIEW
-    end
-
-    subgraph Backend["Backend Gateway (Node.js / Express)"]
-        SEC["Helmet CSP/HSTS + CORS"]
-        RATE["Tiered Rate Limiter"]
-        AUTH["JWT + RBAC"]
-        GUARD["Single-Use Expiry Guard"]
-        SEC --> RATE --> AUTH --> GUARD
-    end
-
-    subgraph Data["Protected Data"]
-        VAULT[("AES-256-GCM<br/>Encrypted Vault")]
-        DB[("MongoDB")]
-        AUDIT[("Immutable Audit Log")]
-    end
-
-    Browser -- "REST + HttpOnly cookie" --> Backend
-    GUARD --> VAULT
-    AUTH --> DB
-    Backend --> AUDIT
-```
+<div align="center">
+  <img src="docs/images/architecture.png" alt="SecureLayer system architecture" width="900" />
+</div>
 
 ### CamDetection flow
 
-```mermaid
-stateDiagram-v2
-    [*] --> Idle
-    Idle --> Consent: Open HIGHLY_CONFIDENTIAL file
-    Consent --> Closed: Declined
-    Consent --> Initializing: Consented
-    Initializing --> Blocked: Model load failure
-    Initializing --> Running: Models ready
-    state Running {
-        [*] --> LowRisk
-        LowRisk --> HighRisk: Threat confirmed across frames
-        HighRisk --> LowRisk: Persistence counter reaches 0
-    }
-    Running --> Shielded: HighRisk
-    Shielded --> Running: Clear
-```
+<div align="center">
+  <img src="docs/images/camdetection-flow.png" alt="CamDetection state flow" width="900" />
+</div>
 
 ---
 
